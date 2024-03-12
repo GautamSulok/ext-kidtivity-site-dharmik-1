@@ -1,0 +1,28 @@
+@layer base {
+  * {
+    @apply border-border;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .bg-bg-gradient {
+    background-image: linear-gradient(
+      280deg,
+      #eeaf21 5.38%,
+      #ea4b27 34.63%,
+      #a95fc5 69.88%,
+      #3a93dd 106.15%
+    );
+  }
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -1,0 +1,176 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider         = "zod-prisma-types"
+  output           = "../src/zod"
+  createInputTypes = false
+  addIncludeType   = false
+  addSelectType    = false
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id                  String                  @id @map("_id")
+  email               String                  @unique
+  email_verified      Boolean                 @default(false)
+  role                UserRole                @default(USER)
+  name                String?
+  avatar_url          String?
+  github_username     String?
+  sessions            UserSession[]
+  keys                UserKey[]
+  memberships         TeamMembership[]
+  verification_tokens UserVerificationToken[]
+  one_time_passwords  UserOneTimePassword[]
+  favorites           UserFavorites[]
+  chatLogs            ChatLog[]
+}
+
+model UserSession {
+  id             String @id @map("_id")
+  user_id        String
+  active_expires BigInt
+  idle_expires   BigInt
+  user           User   @relation(references: [id], fields: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+model UserKey {
+  id              String  @id @map("_id")
+  hashed_password String?
+  user_id         String
+  user            User    @relation(references: [id], fields: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+model UserVerificationToken {
+  id      String   @id @default(cuid()) @map("_id")
+  user_id String
+  user    User     @relation(references: [id], fields: [user_id], onDelete: Cascade)
+  token   String
+  expires DateTime
+
+  @@index([user_id])
+}
+
+enum UserOneTimePasswordType {
+  SIGNUP
+  LOGIN
+  PASSWORD_RESET
+}
+
+model UserOneTimePassword {
+  id         String                  @id @default(cuid()) @map("_id")
+  user_id    String
+  user       User                    @relation(references: [id], fields: [user_id], onDelete: Cascade)
+  code       String
+  type       UserOneTimePasswordType
+  identifier String
+  expires    DateTime
+
+  @@index([user_id])
+}
+
+model Team {
+  id           String           @id @default(cuid()) @map("_id")
+  name         String
+  slug         String           @unique
+  memberships  TeamMembership[]
+  subscription Subscription?
+  invitations  TeamInvitation[]
+}
+
+enum TeamMemberRole {
+  MEMBER
+  OWNER
+}
+
+model TeamMembership {
+  id         String         @id @default(cuid()) @map("_id")
+  team       Team           @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  team_id    String
+  user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id    String
+  role       TeamMemberRole @default(MEMBER)
+  is_creator Boolean        @default(false)
+
+  @@unique([team_id, user_id])
+}
+
+model TeamInvitation {
+  id        String         @id @default(cuid()) @map("_id")
+  team      Team           @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  team_id   String
+  email     String
+  role      TeamMemberRole @default(MEMBER)
+  createdAt DateTime       @default(now())
+  expiresAt DateTime       @updatedAt
+
+  @@unique([team_id, email])
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAUSED
+  CANCELED
+  PAST_DUE
+  UNPAID
+  INCOMPLETE
+  EXPIRED
+}
+
+model Subscription {
+  id                String             @id @map("_id")
+  team              Team               @relation(fields: [team_id], references: [id])
+  team_id           String             @unique
+  customer_id       String
+  status            SubscriptionStatus
+  plan_id           String
+  variant_id        String
+  next_payment_date DateTime?
+}
+
+model FeaturedChat {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  chatId      String          @unique
+  title       String
+  description String
+  image       String
+  featured    Boolean         @default(false)
+  isSelected  Boolean         @default(false)
+  tier        String
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @default(now())
+  favorites   UserFavorites[]
+}
+
+model UserFavorites {
+  id     String       @id @default(auto()) @map("_id") @db.ObjectId
+  chatId String
+  chat   FeaturedChat @relation(fields: [chatId], references: [id])
+  userId String
+  user   User         @relation(fields: [userId], references: [id])
+}
+
+model ChatLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  chatId     String
+  userId     String
+  title      String
+  user       User     @relation(fields: [userId], references: [id])
+  created_at DateTime @default(now())
+}
